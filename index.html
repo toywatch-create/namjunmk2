@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>📰 뉴스 베팅 게임</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --teal:#0F6E56;--teal-l:#E1F5EE;--teal-d:#085041;
+  --amber:#854F0B;--amber-l:#FAEEDA;--amber-d:#633806;
+  --red:#A32D2D;--red-l:#FCEBEB;--red-d:#791F1F;
+  --green:#3B6D11;--green-l:#EAF3DE;--green-d:#27500A;
+  --purple:#534AB7;--purple-l:#EEEDFE;--purple-d:#3C3489;
+  --gray:#5F5E5A;--gray-l:#F1EFE8;--gray-d:#444441;
+  --blue:#185FA5;--blue-l:#E6F1FB;
+  --border:#E5E3DC;--border-s:#C8C6BC;
+  --text:#1a1a18;--text-m:#5F5E5A;--text-h:#888780;
+  --bg:#fff;--bg-s:#F8F7F4;--bg-ss:#F1EFE8;
+  --r:8px;--rl:12px;--rs:6px
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg-s);color:var(--text);font-size:14px;min-height:100vh}
+.page{display:none;min-height:100vh;flex-direction:column}
+.page.on{display:flex}
+
+/* ── 공통 HUD ── */
+.hud{background:var(--bg);border-bottom:0.5px solid var(--border);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.hud-left{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500}
+.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.coin-badge{display:flex;align-items:center;gap:5px;font-size:14px;font-weight:500;color:var(--amber-d);background:var(--amber-l);padding:5px 12px;border-radius:var(--r)}
+.round-badge{font-size:12px;color:var(--text-h);background:var(--bg-ss);padding:4px 10px;border-radius:var(--r)}
+
+/* ── 로그인 ── */
+#p-login{align-items:center;justify-content:center;padding:40px 16px;background:var(--bg-s)}
+.login-box{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--rl);padding:32px 28px;width:100%;max-width:400px;text-align:center}
+.login-icon{font-size:36px;margin-bottom:8px}
+.login-title{font-size:22px;font-weight:500;margin-bottom:4px}
+.login-sub{font-size:13px;color:var(--text-m);margin-bottom:24px;line-height:1.5}
+.input-group{margin-bottom:12px;text-align:left}
+.input-group label{font-size:12px;color:var(--text-m);display:block;margin-bottom:5px;font-weight:500}
+.input-group input{width:100%;padding:10px 12px;font-size:14px;border:0.5px solid var(--border-s);border-radius:var(--r);background:var(--bg);color:var(--text);letter-spacing:2px;font-family:monospace;transition:border-color .15s}
+.input-group input:focus{outline:none;border-color:var(--purple)}
+.login-btn{width:100%;padding:12px;font-size:15px;font-weight:500;background:var(--purple);color:#fff;border:none;border-radius:var(--r);cursor:pointer;margin-top:4px;transition:opacity .15s}
+.login-btn:disabled{opacity:.4;cursor:not-allowed}
+.login-err{font-size:12px;color:var(--red);margin-top:8px;display:none}
+.host-link{font-size:12px;color:var(--purple);cursor:pointer;text-decoration:underline;margin-top:12px;display:inline-block}
+
+/* ── 대기 화면 ── */
+#p-wait{align-items:center;justify-content:center;padding:40px 16px;background:var(--bg-s)}
+.wait-box{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--rl);padding:32px 28px;width:100%;max-width:400px;text-align:center}
+.wait-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--purple);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wait-title{font-size:16px;font-weight:500;margin-bottom:6px}
+.wait-sub{font-size:13px;color:var(--text-m)}
+
+/* ── 게임 화면 ── */
+#p-game{background:var(--bg-s)}
+.game-body{flex:1;padding:16px;max-width:680px;margin:0 auto;width:100%}
+.news-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--rl);padding:18px;margin-bottom:14px}
+.news-round{font-size:11px;font-weight:500;color:var(--text-h);letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px}
+.news-headline{font-size:16px;font-weight:500;color:var(--text);line-height:1.5;margin-bottom:10px}
+.news-body{font-size:13px;color:var(--text-m);line-height:1.7;padding:10px 14px;background:var(--bg-s);border-radius:var(--r);border-left:3px solid var(--border-s);margin-bottom:16px}
+.bet-section{border-top:0.5px solid var(--border);padding-top:14px}
+.bet-title{font-size:12px;font-weight:500;color:var(--text-m);margin-bottom:8px}
+.chip-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.chip{font-size:13px;padding:6px 14px;border:0.5px solid var(--border-s);border-radius:20px;background:var(--bg);cursor:pointer;transition:all .15s;color:var(--text-m)}
+.chip:hover{border-color:var(--amber);color:var(--amber-d)}
+.chip.on{background:var(--amber-l);border:1.5px solid var(--amber);color:var(--amber-d);font-weight:500}
+.verdict-row{display:flex;gap:10px}
+.v-btn{flex:1;padding:12px;font-size:14px;font-weight:500;border:0.5px solid var(--border-s);border-radius:var(--r);background:var(--bg);cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.v-btn:hover{background:var(--bg-s)}
+.v-btn.real{background:var(--teal-l);border:1.5px solid var(--teal);color:var(--teal-d)}
+.v-btn.fake{background:var(--red-l);border:1.5px solid var(--red);color:var(--red-d)}
+.no-bet-warn{font-size:12px;color:var(--red);margin-bottom:8px;display:none}
+
+/* ── 라운드 결과 ── */
+.result-card{background:var(--bg);border-radius:var(--rl);border:0.5px solid var(--border);padding:18px;margin-bottom:14px}
+.result-card.correct{background:var(--green-l);border-color:var(--green)}
+.result-card.wrong{background:var(--red-l);border-color:var(--red)}
+.result-tag{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:500;padding:4px 12px;border-radius:20px;margin-bottom:10px}
+.result-tag.correct{background:#fff;color:var(--green-d)}
+.result-tag.wrong{background:#fff;color:var(--red-d)}
+.result-tag.no-bet{background:var(--gray-l);color:var(--gray-d)}
+.coin-change{font-size:20px;font-weight:500;margin-bottom:10px}
+.coin-change.gain{color:var(--green-d)}
+.coin-change.loss{color:var(--red-d)}
+.answer-reveal{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:3px 10px;border-radius:20px;margin-bottom:8px}
+.answer-reveal.real{background:var(--teal-l);color:var(--teal-d)}
+.answer-reveal.fake{background:var(--red-l);color:var(--red-d)}
+.tech-note{font-size:12px;color:var(--text-m);line-height:1.6;margin-top:6px;padding:8px 10px;background:rgba(255,255,255,.6);border-radius:var(--rs)}
+.next-btn{width:100%;padding:13px;font-size:15px;font-weight:500;background:var(--purple);color:#fff;border:none;border-radius:var(--r);cursor:pointer;transition:opacity .15s}
+.next-btn:disabled{opacity:.4;cursor:not-allowed}
+.waiting-next{text-align:center;padding:14px;font-size:13px;color:var(--text-h);background:var(--bg);border-radius:var(--r);border:0.5px solid var(--border)}
+
+/* ── 최종 결과 ── */
+#p-final{background:var(--bg-s)}
+.final-body{flex:1;padding:16px;max-width:680px;margin:0 auto;width:100%}
+.final-hero{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--rl);padding:20px;text-align:center;margin-bottom:16px}
+.final-hero-title{font-size:13px;color:var(--text-m);margin-bottom:4px}
+.final-hero-coins{font-size:32px;font-weight:500;color:var(--amber-d);margin-bottom:4px}
+.final-hero-diff{font-size:15px;font-weight:500}
+.rank-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:16px}
+.rank-head{padding:10px 14px;background:var(--gray-l);font-size:12px;font-weight:500;color:var(--gray-d);letter-spacing:.05em;text-transform:uppercase}
+.rank-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-top:0.5px solid var(--border)}
+.rank-pos{font-size:18px;min-width:28px;text-align:center}
+.rank-name{flex:1;font-size:14px;font-weight:500}
+.rank-coins{font-size:14px;font-weight:500;color:var(--amber-d)}
+.rank-bar-wrap{flex:2;background:var(--bg-ss);border-radius:20px;height:7px;overflow:hidden}
+.rank-bar{height:100%;border-radius:20px;background:var(--amber);transition:width 1s ease}
+
+/* ── HOST ── */
+#p-host{background:var(--bg-s)}
+.host-body{flex:1;padding:16px;max-width:860px;margin:0 auto;width:100%}
+.host-title{font-size:18px;font-weight:500;margin-bottom:4px}
+.host-sub{font-size:13px;color:var(--text-m);margin-bottom:16px}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+.stat-box{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--r);padding:10px 12px}
+.stat-lbl{font-size:11px;color:var(--text-h);margin-bottom:3px;letter-spacing:.05em;text-transform:uppercase}
+.stat-val{font-size:20px;font-weight:500}
+.team-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.team-box{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--r);padding:12px}
+.team-box-name{font-size:13px;font-weight:500;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.team-box-coins{font-size:12px;color:var(--amber-d);margin-bottom:6px}
+.team-bet-row{font-size:11px;color:var(--text-m);display:flex;justify-content:space-between;padding:2px 0}
+.host-action{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.action-btn{width:100%;padding:13px;font-size:15px;font-weight:500;border:none;border-radius:var(--r);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .15s}
+.action-btn:disabled{opacity:.4;cursor:not-allowed}
+.action-btn.reveal{background:var(--teal);color:#fff}
+.action-btn.next{background:var(--purple);color:#fff}
+.action-btn.finish{background:var(--amber);color:#fff}
+.action-btn.reset{background:var(--bg);color:var(--text-m);border:0.5px solid var(--border-s)}
+.news-preview{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:8px}
+.news-preview-hl{font-size:13px;font-weight:500;margin-bottom:4px}
+.news-preview-status{font-size:11px;color:var(--text-h)}
+
+@media(max-width:500px){
+  .stat-grid{grid-template-columns:1fr 1fr}
+  .team-grid{grid-template-columns:1fr 1fr}
+  .verdict-row{flex-direction:column}
+}
+</style>
+</head>
+<body>
+
+<!-- 로그인 -->
+<div id="p-login" class="page on">
+  <div class="login-box">
+    <div class="login-icon">📰</div>
+    <div class="login-title">뉴스 베팅 게임</div>
+    <div class="login-sub">진짜 뉴스일까, 가짜 뉴스일까?<br>코인을 걸고 판별해 보세요!</div>
+    <div class="input-group">
+      <label>모둠 입장 코드</label>
+      <input id="login-code" type="text" placeholder="입장 코드 입력" maxlength="12" oninput="this.value=this.value.toUpperCase();checkLogin()">
+    </div>
+    <div class="login-err" id="login-err">코드가 올바르지 않습니다.</div>
+    <button class="login-btn" id="login-btn" onclick="doLogin()" disabled>입장하기</button>
+    <div><span class="host-link" onclick="showHostLogin()">교사 관리자 화면 →</span></div>
+  </div>
+</div>
+
+<!-- 관리자 로그인 -->
+<div id="p-host-login" class="page" style="align-items:center;justify-content:center;padding:40px 16px;background:var(--bg-s)">
+  <div class="login-box">
+    <div class="login-icon">🎓</div>
+    <div class="login-title">교사 관리자</div>
+    <div class="login-sub">관리자 코드를 입력하세요.</div>
+    <div class="input-group">
+      <label>관리자 코드</label>
+      <input id="host-code" type="password" placeholder="관리자 코드 입력" oninput="checkHostLogin()">
+    </div>
+    <div class="login-err" id="host-err">코드가 올바르지 않습니다.</div>
+    <button class="login-btn" id="host-login-btn" onclick="doHostLogin()" disabled>입장하기</button>
+    <div><span class="host-link" onclick="showPage('p-login')">← 돌아가기</span></div>
+  </div>
+</div>
+
+<!-- 대기 -->
+<div id="p-wait" class="page">
+  <div class="wait-box">
+    <div class="wait-spinner"></div>
+    <div class="wait-title" id="wait-title">교사가 라운드를 시작할 때까지 기다려 주세요</div>
+    <div class="wait-sub" id="wait-sub">현재 라운드가 준비되고 있습니다...</div>
+    <div style="margin-top:16px;padding:10px 14px;background:var(--amber-l);border-radius:var(--r);font-size:14px;font-weight:500;color:var(--amber-d)" id="wait-coins">🪙 3,000 코인</div>
+  </div>
+</div>
+
+<!-- 게임 -->
+<div id="p-game" class="page">
+  <div class="hud">
+    <div class="hud-left"><div class="dot" id="g-dot"></div><span id="g-name"></span></div>
+    <div class="coin-badge">🪙 <span id="g-coins">3000</span></div>
+    <div class="round-badge" id="g-round">1 / 4</div>
+  </div>
+  <div class="game-body" id="game-body"></div>
+</div>
+
+<!-- 최종 결과 -->
+<div id="p-final" class="page">
+  <div class="hud">
+    <div class="hud-left"><span>최종 결과</span></div>
+    <div class="coin-badge">🪙 결과</div>
+  </div>
+  <div class="final-body" id="final-body"></div>
+</div>
+
+<!-- HOST -->
+<div id="p-host" class="page">
+  <div class="hud">
+    <div class="hud-left"><span style="font-size:12px;background:#FCEBEB;color:#A32D2D;padding:2px 8px;border-radius:4px;font-weight:500">HOST</span><span>교사 관리 화면</span></div>
+    <div class="coin-badge" style="background:#FCEBEB;color:#A32D2D">관리자</div>
+  </div>
+  <div class="host-body" id="host-body"></div>
+</div>
+
+<script>
+const TEAMS=[
+  {id:0,name:'1모둠',code:'NEWS1',color:'#534AB7'},
+  {id:1,name:'2모둠',code:'NEWS2',color:'#0F6E56'},
+  {id:2,name:'3모둠',code:'NEWS3',color:'#A32D2D'},
+  {id:3,name:'4모둠',code:'NEWS4',color:'#854F0B'},
+  {id:4,name:'5모둠',code:'NEWS5',color:'#185FA5'},
+  {id:5,name:'6모둠',code:'NEWS6',color:'#3B6D11'},
+];
+const HOST_CODE='TEACHER2026';
+const CHIPS=[100,300,500,1000];
+const INIT=3000;
+const WIN_MULT=1.5;
+
+const NEWS=[
+  {id:0,num:'뉴스 1',
+   headline:'"WHO, \'스마트폰 하루 2시간 초과 시 뇌 손상 확인\' 공식 발표"',
+   body:'세계보건기구(WHO)가 최근 발표한 연구 결과에 따르면, 스마트폰을 하루 2시간 이상 사용할 경우 뇌 신경 세포 손상이 확인됐다. WHO 측은 "특히 성장기 청소년의 경우 스마트폰 전자기파가 전두엽 발달을 저해할 수 있다"고 경고했다. 전문가들은 "이미 수백만 명의 청소년이 돌이킬 수 없는 뇌 손상 위험에 노출됐다"며 우려를 표명했다. 해당 연구는 전 세계 30개국 10만 명을 대상으로 진행됐으며, 결과는 충격적이었다.',
+   answer:'fake',
+   tech:'조작 기술: 권위 기관명 도용(WHO), 출처 불명 수치("30개국 10만 명"), 감정 자극("충격적", "돌이킬 수 없는"), 모호한 전문가 인용'},
+  {id:1,num:'뉴스 2',
+   headline:'"2024년 여름철 평균기온 25.6℃, 1973년 이래 역대 1위 — 기상청 발표"',
+   body:'기상청이 발표한 2024년 여름철(6~8월) 기상 분석 결과, 전국 평균기온이 25.6℃를 기록해 1973년 공식 관측 이래 역대 최고치를 경신했다. 이는 평년(23.6℃)보다 2.0℃ 높은 수치다. 기상청은 "북태평양 고기압이 예년보다 강하고 오래 지속된 것이 주요 원인"이라고 설명했다. 폭염 일수 역시 평년 대비 크게 늘어난 것으로 나타났다.',
+   answer:'real',
+   tech:'진짜 뉴스: 공식 출처 명시(기상청), 구체적 수치(25.6℃, 평년 대비 2.0℃), 과학적 원인 설명, 감정 자극 없음'},
+  {id:2,num:'뉴스 3',
+   headline:'"청소년 70%, \'유튜브가 교과서보다 더 믿을 만하다\' 응답"',
+   body:'국내 청소년 10명 중 7명이 교과서보다 유튜브를 더 신뢰하는 것으로 나타났다. 한 연구기관이 전국 청소년 1,200명을 대상으로 실시한 설문 결과, 70.3%가 "유튜브 정보가 교과서보다 믿을 만하다"고 응답했다. 전문가들은 "공교육의 붕괴가 시작됐다"며 우려를 나타냈다. 일부 학교에서는 수업 중 교과서 대신 유튜브 영상을 활용하는 사례가 급증해 대책 마련이 시급하다.',
+   answer:'fake',
+   tech:'조작 기술: 출처 불명("한 연구기관"), 모호한 전문가 인용, 과장된 결론("공교육 붕괴"), 검증 불가 사례 추가'},
+  {id:3,num:'뉴스 4',
+   headline:'"전문가들 \'한국, 10년 내 사람이 살 수 없는 나라 된다\' 경고"',
+   body:'국내외 환경·사회 분야 전문가들의 분석에 따르면, 이대로라면 10년 내 한국은 사람이 거주하기 어려운 나라가 될 수 있다는 경고가 나왔다. 저출산, 기후변화, 사회 갈등이 복합 작용하면서 "임계점"에 다가서고 있다는 것이다. 한 글로벌 싱크탱크 보고서는 한국을 "향후 10년 내 거주 가능성 위기 국가 5위"에 올렸다. 전문가들은 "지금 당장 국가적 대응이 없으면 회복 불가능한 상태가 된다"고 경고했다.',
+   answer:'fake',
+   tech:'조작 기술: 모호한 출처("전문가들", "글로벌 싱크탱크"), 극단적 표현("임계점", "회복 불가능"), 검증 불가 순위("5위")'},
+];
+
+// ── 게임 상태 (localStorage 공유) ──
+function getG(){
+  try{const s=localStorage.getItem('nbg2');return s?JSON.parse(s):null;}catch(e){return null;}
+}
+function setG(g){try{localStorage.setItem('nbg2',JSON.stringify(g));}catch(e){}}
+function initG(){
+  const g={
+    round:0,           // 현재 라운드 0~3
+    phase:'wait',      // wait | betting | revealed | finished
+    teams:TEAMS.map(t=>({id:t.id,coins:INIT,bets:[null,null,null,null],verdicts:[null,null,null,null]})),
+  };
+  setG(g);return g;
+}
+function getOrInit(){return getG()||initG();}
+
+// ── 현재 팀 ──
+let myTeamId=null;
+let isHost=false;
+let pollerTimer=null;
+
+function myTeam(){const g=getOrInit();return g.teams[myTeamId];}
+
+// ── 페이지 전환 ──
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+}
+
+// ── 로그인 ──
+function checkLogin(){
+  const v=document.getElementById('login-code').value.trim().toUpperCase();
+  document.getElementById('login-btn').disabled=!TEAMS.find(t=>t.code===v);
+  document.getElementById('login-err').style.display='none';
+}
+function doLogin(){
+  const v=document.getElementById('login-code').value.trim().toUpperCase();
+  const t=TEAMS.find(t=>t.code===v);
+  if(!t){document.getElementById('login-err').style.display='block';return;}
+  myTeamId=t.id;
+  isHost=false;
+  startPoller();
+  routePlayer();
+}
+function showHostLogin(){showPage('p-host-login');}
+function checkHostLogin(){
+  document.getElementById('host-login-btn').disabled=
+    document.getElementById('host-code').value!==HOST_CODE;
+  document.getElementById('host-err').style.display='none';
+}
+function doHostLogin(){
+  if(document.getElementById('host-code').value!==HOST_CODE){
+    document.getElementById('host-err').style.display='block';return;
+  }
+  isHost=true;
+  getOrInit();
+  renderHost();
+  showPage('p-host');
+  startPoller();
+}
+
+// ── 라우터 (학생) ──
+function routePlayer(){
+  const g=getOrInit();
+  const t=g.teams[myTeamId];
+  if(g.phase==='finished'){renderFinal();showPage('p-final');return;}
+  if(g.phase==='wait'){renderWait(g,t);showPage('p-wait');return;}
+
+  const r=g.round;
+  if(g.phase==='betting'){
+    if(t.verdicts[r]!==null){
+      // 이미 이 라운드 베팅 완료 → 결과 대기
+      renderWaitReveal(g,t);showPage('p-wait');return;
+    }
+    renderBetting(g,t);showPage('p-game');return;
+  }
+  if(g.phase==='revealed'){
+    renderRoundResult(g,t);showPage('p-game');return;
+  }
+}
+
+// ── 대기 화면 ──
+function renderWait(g,t){
+  document.getElementById('wait-title').textContent=
+    g.phase==='wait'?'교사가 게임을 시작할 때까지 기다려 주세요':'라운드 준비 중...';
+  document.getElementById('wait-sub').textContent=
+    g.phase==='wait'?`참여 코드: ${TEAMS[myTeamId].code}`:`${NEWS[g.round].num} 결과 대기 중...`;
+  document.getElementById('wait-coins').textContent=`🪙 ${t.coins.toLocaleString()} 코인`;
+}
+function renderWaitReveal(g,t){
+  document.getElementById('wait-title').textContent='베팅 완료! 결과를 기다리는 중...';
+  document.getElementById('wait-sub').textContent='교사가 정답을 공개하면 자동으로 이동합니다.';
+  document.getElementById('wait-coins').textContent=`🪙 ${t.coins.toLocaleString()} 코인`;
+}
+
+// ── 베팅 화면 ──
+function renderBetting(g,t){
+  const r=g.round;
+  const n=NEWS[r];
+  const bet=t.bets[r];
+  const verdict=t.verdicts[r];
+  const tm=TEAMS[myTeamId];
+
+  document.getElementById('g-dot').style.background=tm.color;
+  document.getElementById('g-name').textContent=tm.name;
+  document.getElementById('g-coins').textContent=t.coins.toLocaleString();
+  document.getElementById('g-round').textContent=`${r+1} / ${NEWS.length}`;
+
+  document.getElementById('game-body').innerHTML=`
+    <div class="news-card">
+      <div class="news-round">${n.num}</div>
+      <div class="news-headline">${n.headline}</div>
+      <div class="news-body">${n.body}</div>
+      <div class="bet-section">
+        <div class="bet-title">베팅 금액을 선택하고 진짜/가짜를 판별하세요</div>
+        <div class="chip-row">
+          ${CHIPS.map(a=>`<span class="chip${bet===a?' on':''}" onclick="setBet(${a})">${a.toLocaleString()}코인</span>`).join('')}
+        </div>
+        <div class="no-bet-warn" id="no-bet-warn">먼저 베팅 금액을 선택해 주세요!</div>
+        <div class="verdict-row">
+          <button class="v-btn${verdict==='real'?' real':''}" onclick="setVerdict('real')">✅ 진짜 뉴스</button>
+          <button class="v-btn${verdict==='fake'?' fake':''}" onclick="setVerdict('fake')">❌ 가짜 뉴스</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function setBet(amount){
+  const g=getOrInit();const r=g.round;
+  if(g.phase!=='betting')return;
+  const t=g.teams[myTeamId];
+  t.bets[r]=t.bets[r]===amount?null:amount;
+  setG(g);renderBetting(g,t);
+}
+function setVerdict(v){
+  const g=getOrInit();const r=g.round;
+  if(g.phase!=='betting')return;
+  const t=g.teams[myTeamId];
+  if(!t.bets[r]){
+    document.getElementById('no-bet-warn').style.display='block';return;
+  }
+  t.verdicts[r]=v;
+  setG(g);
+  renderWaitReveal(g,t);showPage('p-wait');
+}
+
+// ── 라운드 결과 ──
+function renderRoundResult(g,t){
+  const r=g.round;
+  const n=NEWS[r];
+  const verdict=t.verdicts[r];
+  const bet=t.bets[r]||0;
+  const correct=verdict===n.answer;
+  const wrong=verdict&&verdict!==n.answer;
+  const gain=correct?Math.round(bet*(WIN_MULT-1)):wrong?-bet:0;
+  const tm=TEAMS[myTeamId];
+
+  document.getElementById('g-dot').style.background=tm.color;
+  document.getElementById('g-name').textContent=tm.name;
+  document.getElementById('g-coins').textContent=t.coins.toLocaleString();
+  document.getElementById('g-round').textContent=`${r+1} / ${NEWS.length}`;
+
+  const isLast=r>=NEWS.length-1;
+
+  document.getElementById('game-body').innerHTML=`
+    <div class="result-card ${correct?'correct':wrong?'wrong':''}">
+      <div class="news-round">${n.num} 결과</div>
+      ${correct?`<div class="result-tag correct">✅ 정답!</div>`:
+        wrong?`<div class="result-tag wrong">❌ 오답!</div>`:
+        `<div class="result-tag no-bet">베팅 없음</div>`}
+      <div class="coin-change ${gain>0?'gain':gain<0?'loss':''}">
+        ${gain>0?'+'+gain.toLocaleString()+'코인 획득':gain<0?Math.abs(gain).toLocaleString()+'코인 잃음':'변동 없음'}
+      </div>
+      <div class="news-headline" style="margin-bottom:8px">${n.headline}</div>
+      <span class="answer-reveal ${n.answer}">${n.answer==='real'?'✅ 진짜 뉴스':'❌ 가짜 뉴스'}</span>
+      <div class="tech-note">${n.tech}</div>
+    </div>
+    ${isLast
+      ?`<button class="next-btn" onclick="goFinal()">최종 순위 보기 →</button>`
+      :`<div class="waiting-next">다음 라운드는 교사가 시작합니다...</div>`}`;
+}
+
+function goFinal(){showPage('p-final');renderFinal();}
+
+// ── 최종 결과 ──
+function renderFinal(){
+  const g=getOrInit();
+  const t=g.teams[myTeamId];
+  const tm=TEAMS[myTeamId];
+  const diff=t.coins-INIT;
+
+  const sorted=[...g.teams].map((t,i)=>({...t,...TEAMS[i]})).sort((a,b)=>b.coins-a.coins);
+  const max=sorted[0].coins||INIT;
+  const medals=['🥇','🥈','🥉'];
+
+  document.getElementById('final-body').innerHTML=`
+    <div class="final-hero">
+      <div class="final-hero-title">${tm.name} 최종 결과</div>
+      <div class="final-hero-coins">🪙 ${t.coins.toLocaleString()} 코인</div>
+      <div class="final-hero-diff" style="color:${diff>=0?'var(--green-d)':'var(--red-d)'}">
+        ${diff>=0?'+':''}{${diff.toLocaleString()}} 코인 (시작: 3,000)
+      </div>
+    </div>
+    <div class="rank-card">
+      <div class="rank-head">전체 모둠 순위</div>
+      ${sorted.map((t,i)=>{
+        const d=t.coins-INIT;
+        return `<div class="rank-row">
+          <div class="rank-pos">${medals[i]||i+1}</div>
+          <div class="dot" style="background:${t.color}"></div>
+          <div class="rank-name">${t.name}</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="rank-coins">🪙 ${t.coins.toLocaleString()}</div>
+            <div style="font-size:12px;color:${d>=0?'var(--green)':'var(--red)'}">
+              ${d>=0?'+':''}${d.toLocaleString()}
+            </div>
+          </div>
+          <div class="rank-bar-wrap"><div class="rank-bar" style="width:${Math.round(t.coins/max*100)}%"></div></div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="font-size:14px;font-weight:500;margin-bottom:10px">뉴스별 정답 해설</div>
+    ${NEWS.map(n=>`
+      <div style="background:var(--bg);border:0.5px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:8px">
+        <div style="font-size:11px;color:var(--text-h);margin-bottom:3px">${n.num}</div>
+        <div style="font-size:13px;font-weight:500;margin-bottom:6px">${n.headline}</div>
+        <span class="answer-reveal ${n.answer}">${n.answer==='real'?'✅ 진짜 뉴스':'❌ 가짜 뉴스'}</span>
+        <div style="font-size:12px;color:var(--text-m);margin-top:6px">${n.tech}</div>
+      </div>`).join('')}`;
+}
+
+// ── HOST 화면 ──
+function renderHost(){
+  const g=getOrInit();
+  const r=g.round;
+  const canReveal=g.phase==='betting';
+  const canNext=g.phase==='revealed'&&r<NEWS.length-1;
+  const canFinish=g.phase==='revealed'&&r>=NEWS.length-1;
+
+  const betCount=g.teams.reduce((s,t)=>s+(t.verdicts[r]!==null?1:0),0);
+
+  let html=`<div class="host-title">교사 관리 화면</div>
+  <div class="host-sub">각 단계별로 버튼을 클릭해 게임을 진행하세요.</div>
+  <div class="stat-grid">
+    <div class="stat-box"><div class="stat-lbl">현재 라운드</div><div class="stat-val">${g.phase==='wait'?'대기':r+1+' / '+NEWS.length}</div></div>
+    <div class="stat-box"><div class="stat-lbl">상태</div><div class="stat-val" style="font-size:14px">${{wait:'대기 중',betting:'베팅 중',revealed:'결과 공개됨',finished:'완료'}[g.phase]}</div></div>
+    <div class="stat-box"><div class="stat-lbl">베팅 완료</div><div class="stat-val">${g.phase==='betting'?betCount+' / '+g.teams.length:'—'}</div></div>
+    <div class="stat-box"><div class="stat-lbl">총 모둠</div><div class="stat-val">${g.teams.length}</div></div>
+  </div>`;
+
+  if(g.phase!=='wait'&&g.phase!=='finished'){
+    const n=NEWS[r];
+    html+=`<div class="news-preview">
+      <div class="news-preview-hl">${n.num}: ${n.headline}</div>
+      <div class="news-preview-status">정답: ${n.answer==='real'?'✅ 진짜':'❌ 가짜'} | ${n.tech}</div>
+    </div>`;
+  }
+
+  html+=`<div class="host-action">`;
+
+  if(g.phase==='wait'){
+    html+=`<button class="action-btn reveal" onclick="hostStart()">▶ 게임 시작 (라운드 1)</button>`;
+  }
+  if(canReveal){
+    html+=`<button class="action-btn reveal" onclick="hostReveal()">🎯 정답 공개하기 (${NEWS[r].num})</button>`;
+  }
+  if(canNext){
+    html+=`<button class="action-btn next" onclick="hostNext()">▶ 다음 라운드 (${r+2}번)</button>`;
+  }
+  if(canFinish){
+    html+=`<button class="action-btn finish" onclick="hostFinish()">🏆 최종 결과 공개</button>`;
+  }
+  html+=`<button class="action-btn reset" onclick="hostReset()">↺ 게임 초기화</button>`;
+  html+=`</div>`;
+
+  html+=`<div style="font-size:13px;font-weight:500;margin-bottom:8px">모둠별 현황</div>
+  <div class="team-grid">`;
+
+  g.teams.forEach((t,i)=>{
+    const tm=TEAMS[i];
+    html+=`<div class="team-box">
+      <div class="team-box-name"><div class="dot" style="background:${tm.color}"></div>${tm.name}</div>
+      <div class="team-box-coins">🪙 ${t.coins.toLocaleString()} 코인</div>
+      <div>${NEWS.map((n,j)=>{
+        const v=t.verdicts[j];const b=t.bets[j];
+        return `<div class="team-bet-row">
+          <span>${n.num.replace('뉴스 ','R')}</span>
+          <span>${v?`${(b||0).toLocaleString()}코인 / ${v==='real'?'진짜':'가짜'}`:'—'}</span>
+        </div>`;
+      }).join('')}</div>
+    </div>`;
+  });
+
+  html+=`</div><div style="padding:8px 0;font-size:12px;color:var(--text-h)">입장 코드: ${TEAMS.map(t=>t.name+' → '+t.code).join(' | ')} | 관리자 → ${HOST_CODE}</div>`;
+
+  document.getElementById('host-body').innerHTML=html;
+}
+
+function hostStart(){
+  const g=getOrInit();
+  g.round=0;g.phase='betting';
+  setG(g);renderHost();
+}
+function hostReveal(){
+  const g=getOrInit();const r=g.round;
+  g.phase='revealed';
+  // 코인 정산
+  g.teams.forEach(t=>{
+    const v=t.verdicts[r];const b=t.bets[r]||0;
+    if(!v||!b)return;
+    if(v===NEWS[r].answer){t.coins+=Math.round(b*(WIN_MULT-1));}
+    else{t.coins=Math.max(0,t.coins-b);}
+  });
+  setG(g);renderHost();
+}
+function hostNext(){
+  const g=getOrInit();
+  g.round++;g.phase='betting';
+  setG(g);renderHost();
+}
+function hostFinish(){
+  const g=getOrInit();
+  g.phase='finished';
+  setG(g);renderHost();
+}
+function hostReset(){
+  if(!confirm('게임을 초기화하면 모든 기록이 삭제됩니다. 계속할까요?'))return;
+  initG();renderHost();
+}
+
+// ── 폴러 (2초마다 상태 확인) ──
+function startPoller(){
+  if(pollerTimer)clearInterval(pollerTimer);
+  pollerTimer=setInterval(()=>{
+    if(isHost){renderHost();return;}
+    if(myTeamId===null)return;
+    const cur=document.querySelector('.page.on').id;
+    const g=getOrInit();const t=g.teams[myTeamId];const r=g.round;
+
+    if(g.phase==='finished'&&cur!=='p-final'){renderFinal();showPage('p-final');return;}
+    if(g.phase==='betting'&&t.verdicts[r]===null&&cur!=='p-game'){renderBetting(g,t);showPage('p-game');return;}
+    if(g.phase==='betting'&&t.verdicts[r]!==null&&cur!=='p-wait'){renderWaitReveal(g,t);showPage('p-wait');return;}
+    if(g.phase==='revealed'&&cur!=='p-game'){renderRoundResult(g,t);showPage('p-game');return;}
+    if(g.phase==='wait'&&cur!=='p-wait'){renderWait(g,t);showPage('p-wait');return;}
+    // 같은 페이지에 있을 때 내용만 업데이트
+    if(g.phase==='wait'&&cur==='p-wait')renderWait(g,t);
+    if(g.phase==='revealed'&&cur==='p-game')renderRoundResult(g,t);
+  },2000);
+}
+</script>
+</body>
+</html>
