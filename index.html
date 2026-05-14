@@ -193,23 +193,44 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="host-body" id="host-body"></div>
 </div>
 
-<!-- Firebase SDK (일반 스크립트로 전역 노출) -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
 <script>
-// ── Firebase 초기화 ──
-firebase.initializeApp({
-  apiKey: "AIzaSyCifjxuN8T2zL1RmeGHy-CeEm0171poN7o",
-  authDomain: "bettingonnews-cbce0.firebaseapp.com",
-  databaseURL: "https://bettingonnews-cbce0-default-rtdb.firebaseio.com",
-  projectId: "bettingonnews-cbce0",
-  storageBucket: "bettingonnews-cbce0.firebasestorage.app",
-  messagingSenderId: "193843899838",
-  appId: "1:193843899838:web:cabfe3220c2770602c1def"
-});
-const db = firebase.database();
-const GAME_REF = db.ref('game');
+// ── Firebase 나중에 로드 (game logic 이후) ──
+let db = null;
+let GAME_REF = null;
+
+function loadFirebase(){
+  return new Promise((resolve)=>{
+    // 3초 타임아웃
+    const timer = setTimeout(()=>resolve(false), 3000);
+    const s1 = document.createElement('script');
+    s1.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
+    s1.onload = ()=>{
+      const s2 = document.createElement('script');
+      s2.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';
+      s2.onload = ()=>{
+        clearTimeout(timer);
+        try {
+          firebase.initializeApp({
+            apiKey: "AIzaSyCifjxuN8T2zL1RmeGHy-CeEm0171poN7o",
+            authDomain: "bettingonnews-cbce0.firebaseapp.com",
+            databaseURL: "https://bettingonnews-cbce0-default-rtdb.firebaseio.com",
+            projectId: "bettingonnews-cbce0",
+            storageBucket: "bettingonnews-cbce0.firebasestorage.app",
+            messagingSenderId: "193843899838",
+            appId: "1:193843899838:web:cabfe3220c2770602c1def"
+          });
+          db = firebase.database();
+          GAME_REF = db.ref('game');
+          resolve(true);
+        } catch(e){ clearTimeout(timer); resolve(false); }
+      };
+      s2.onerror = ()=>{ clearTimeout(timer); resolve(false); };
+      document.head.appendChild(s2);
+    };
+    s1.onerror = ()=>{ clearTimeout(timer); resolve(false); };
+    document.head.appendChild(s1);
+  });
+}
 
 // ── 상수 ──
 const TEAMS=[
@@ -277,13 +298,21 @@ function checkLogin(){
   document.getElementById('login-btn').disabled=!TEAMS.find(t=>t.code===v);
   document.getElementById('login-err').style.display='none';
 }
-function doLogin(){
+async function doLogin(){
   const v=document.getElementById('login-code').value.trim().toUpperCase();
   const t=TEAMS.find(t=>t.code===v);
   if(!t){document.getElementById('login-err').style.display='block';return;}
   myTeamId=t.id;
   isHost=false;
-  startFirebase();
+  document.getElementById('login-btn').disabled=true;
+  document.getElementById('login-btn').textContent='접속 중...';
+  const ok = GAME_REF ? true : await loadFirebase();
+  if(ok && GAME_REF){
+    startFirebase();
+  } else {
+    if(!gameState) initG();
+    routePlayer();
+  }
 }
 function showHostLogin(){showPage('p-host-login');}
 function checkHostLogin(){
@@ -291,15 +320,21 @@ function checkHostLogin(){
     document.getElementById('host-code').value!==HOST_CODE;
   document.getElementById('host-err').style.display='none';
 }
-function doHostLogin(){
+async function doHostLogin(){
   if(document.getElementById('host-code').value!==HOST_CODE){
     document.getElementById('host-err').style.display='block';return;
   }
-  if(typeof firebase==='undefined'){
-    alert('Firebase 로딩 중입니다. 잠시 후 다시 시도해 주세요.');return;
-  }
   isHost=true;
-  startFirebase();
+  document.getElementById('host-login-btn').disabled=true;
+  document.getElementById('host-login-btn').textContent='접속 중...';
+  const ok = GAME_REF ? true : await loadFirebase();
+  if(ok && GAME_REF){
+    startFirebase();
+  } else {
+    if(!gameState) initG();
+    renderHost();
+    showPage('p-host');
+  }
 }
 
 // ── Firebase 리스너 시작 ──
